@@ -1,0 +1,91 @@
+local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+local CoreGui = game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer
+local PLACE_ID = game.PlaceId
+
+local gui = Instance.new("ScreenGui", CoreGui)
+gui.Name = "MiniServerHopGui"
+gui.ResetOnSpawn = false
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 200, 0, 120)
+frame.Position = UDim2.new(0.5, -100, 0.5, -60)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 20)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.Text = "Aroon's Serverhop"
+title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 16
+
+local toggleBtn = Instance.new("TextButton", gui)
+toggleBtn.Size = UDim2.new(0, 100, 0, 25)
+toggleBtn.Position = UDim2.new(0, 10, 0, 10)
+toggleBtn.Text = "Toggle GUI"
+toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 6)
+
+toggleBtn.MouseButton1Click:Connect(function()
+	frame.Visible = not frame.Visible
+end)
+
+local hopBtn = Instance.new("TextButton", frame)
+hopBtn.Size = UDim2.new(1, -20, 0, 40)
+hopBtn.Position = UDim2.new(0, 10, 0, 25)
+hopBtn.Text = "Server Hop"
+hopBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+hopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+hopBtn.Font = Enum.Font.SourceSansBold
+hopBtn.TextSize = 18
+Instance.new("UICorner", hopBtn).CornerRadius = UDim.new(0, 6)
+
+local status = Instance.new("TextLabel", frame)
+status.Size = UDim2.new(1, -20, 0, 20)
+status.Position = UDim2.new(0, 10, 0, 75)
+status.BackgroundTransparency = 1
+status.Text = "Ready"
+status.TextColor3 = Color3.fromRGB(200, 200, 200)
+status.Font = Enum.Font.SourceSans
+status.TextSize = 14
+status.TextXAlignment = Enum.TextXAlignment.Center
+
+local function serverHop()
+	local currentJobId = game.JobId
+	local maxTotalTime = 10
+	local startTime = tick()
+	status.Text = "Finding server..."
+	repeat
+		local success, result = pcall(function()
+			local url = ("https://games.roblox.com/v1/games/%d/servers/Public?limit=100&sortOrder=Asc"):format(PLACE_ID)
+			return HttpService:JSONDecode(game:HttpGet(url))
+		end)
+		if success and result and result.data then
+			local validServers = {}
+			for _, server in pairs(result.data) do
+				if server.playing < server.maxPlayers and server.id ~= currentJobId then
+					table.insert(validServers, server)
+				end
+			end
+			if #validServers > 0 then
+				local chosen = validServers[math.random(1, #validServers)]
+				status.Text = "Hopping..."
+				TeleportService:TeleportToPlaceInstance(PLACE_ID, chosen.id, LocalPlayer)
+				return
+			end
+		end
+		task.wait(3)
+	until tick() - startTime > maxTotalTime
+	status.Text = "Failed. Try again."
+end
+
+hopBtn.MouseButton1Click:Connect(serverHop)
